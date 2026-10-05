@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.aymen</groupId>
-    <artifactId>custumer-service</artifactId>
+    <artifactId>ebank-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>custumer-service</name>
-    <description>custumer-service</description>
+    <name>ebank-service</name>
+    <description>ebank-service</description>
     <url/>
     <licenses>
         <license/>
