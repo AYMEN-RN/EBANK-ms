@@ -1,5 +1,8 @@
 package com.aymen.ebankbot.discord;
 import com.aymen.ebankbot.agents.EbankAIAgent;
+import com.zgamelogic.discord.annotations.DiscordController;
+import com.zgamelogic.discord.annotations.DiscordMapping;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 @DiscordController
 public class DiscordBot {
@@ -13,7 +16,12 @@ public class DiscordBot {
     private void perform(MessageReceivedEvent event){
         if (event.getAuthor().isBot()) return;
         String query = event.getMessage().getContentRaw();
-        String response = ebankAIAgent.chat(query, "DiscordBot");
+            if (query == null || query.trim().isEmpty()) {
+            return;
+        }
+
+        String channelId = event.getChannel().getId();
+        String response = ebankAIAgent.chat(query, channelId);
         event.getChannel().sendMessage(response).queue();
     }
 
