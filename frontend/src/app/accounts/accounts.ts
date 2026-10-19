@@ -1,9 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {AsyncPipe} from '@angular/common';
 
 @Component({
-  imports: [],
+  imports: [
+    AsyncPipe
+  ],
   selector: 'app-accounts',
   styleUrl: './accounts.css',
   templateUrl: './accounts.html',
 })
-export class Accounts {}
+export class Accounts {
+  private http = inject(HttpClient);
+  accounts$ = this.http.get<any[]>("http://localhost:9999/EBANK-SERVICE/accounts")
+}
