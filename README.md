@@ -1,66 +1,73 @@
 # E-Bank Microservices
 
-An electronic banking project built with Spring Boot and Spring Cloud. It is
-being developed as a microservices-based application; the services and APIs
-described here reflect the current state of the repository and may change.
+Projet de banque électronique construit autour de services Spring Boot indépendants. Il regroupe la gestion des clients et des comptes, la découverte des services, une passerelle API, un chatbot connecté aux données bancaires et une interface web Angular.
 
-## Current features
+> Le projet est en cours de développement. Ce README décrit les fonctionnalités et la configuration présentes dans le dépôt ; certaines intégrations, notamment le routage de la passerelle, restent à finaliser.
 
-- **Customer service** for creating and retrieving customers.
-- **E-Bank service** for creating and retrieving bank accounts. It looks up
-  customer details through the customer service when creating an account and
-  when retrieving an account by ID.
-- **Discovery service** using Netflix Eureka for service registration and
-  discovery.
-- **Gateway service** with discovery-based route definitions.
-- H2 in-memory databases for customer and account data.
-- OpenAPI dependencies in the customer and E-Bank services.
+## Fonctionnalités
 
-The customer and account services add sample records at startup. Because the
-data is stored in memory, it is reset when a service restarts.
+- Gestion des clients : création, consultation d'un client et liste des clients.
+- Gestion des comptes bancaires : création d'un compte pour un client existant, consultation d'un compte et liste des comptes.
+- Communication entre les services de comptes et de clients via OpenFeign, avec un circuit breaker Resilience4j et une réponse de secours.
+- Découverte des services avec Netflix Eureka.
+- Serveur MCP dans les services clients et comptes, afin d'exposer leurs opérations au chatbot.
+- Assistant conversationnel basé sur Google Gemini, accessible par HTTP et via des bots Telegram et Discord.
+- Interface Angular contenant une page de consultation des comptes.
+- Bases H2 en mémoire pour les données clients et comptes.
 
-## Technology
+## Architecture
+
+```text
+frontend (Angular :4200)
+    └── API Gateway (:9999) ── routes à configurer
+
+discovery-service (Eureka :8761)
+    ├── customer-service (:8056)
+    ├── ebank-service (:8057) ── Feign ──> customer-service
+    ├── gateway-service (:9999)
+    └── ebank-bot (:8058)
+          ├── Google Gemini
+          ├── MCP client ──> customer-service et ebank-service
+          ├── Telegram
+          └── Discord
+```
+
+| Répertoire | Rôle |
+| --- | --- |
+| `custumer-service/` | API REST des clients, serveur MCP et stockage H2. Le nom du répertoire est orthographié ainsi dans le dépôt. |
+| `ebank-service/` | API REST des comptes, serveur MCP, stockage H2 et appel au service clients. |
+| `discovery-service/` | Registre Eureka sur le port `8761`. |
+| `gateway-service/` | Passerelle Spring Cloud Gateway sur le port `9999`, avec configuration CORS et découverte activée. |
+| `ebank-bot/` | API de chat, agent Gemini et intégrations Telegram/Discord. |
+| `frontend/` | Application Angular avec une vue des comptes. |
+| `pom.xml`, `src/` | Projet Spring Boot racine séparé ; le POM racine n'est pas un agrégateur Maven des services. |
+
+Les cinq services backend sont des projets Maven autonomes, chacun avec son propre wrapper `mvnw` / `mvnw.cmd`.
+
+## Technologies
 
 - Java 21
 - Spring Boot 4.1.1
-- Spring Cloud 2025.1.3
-- Spring Web MVC and Spring Data JPA
-- Netflix Eureka
-- Spring Cloud Gateway and OpenFeign
-- Resilience4j circuit breaker
-- H2 and Maven
+- Spring Cloud 2025.1.3 : Eureka, Gateway, OpenFeign et circuit breaker Resilience4j
+- Spring AI 2.0.1 et Google Gemini
+- Spring MVC, Spring Data JPA, H2 et serveurs MCP
+- Angular 22, TypeScript 6, RxJS et Bootstrap 5
+- Bots Telegram et Discord
+- Maven Wrapper et npm 10.9.9
 
-## Project structure
-
-```text
-.
-├── custumer-service/    # Customer API (directory name as it exists in the repository)
-├── discovery-service/   # Eureka server
-├── ebank-service/       # Bank account API
-├── gateway-service/     # API gateway
-├── src/                 # Root application source
-└── pom.xml              # Root application Maven project
-```
-
-Each service directory is its own Maven project with its own Maven wrapper.
-The root `pom.xml` is a separate Spring Boot project, not a Maven parent or
-aggregator for the service projects.
-
-## Prerequisites
+## Prérequis
 
 - JDK 21
+- Node.js et npm (version npm déclarée dans `frontend/package.json` : `10.9.9`)
 - Git
 
-Maven does not need to be installed separately; use the wrapper included in
-each project.
+Maven n'a pas besoin d'être installé séparément : chaque projet backend fournit son wrapper.
 
-## Run locally
+## Démarrage local
 
-Start each service in a separate terminal. Start Eureka first, then the
-customer service, then the E-Bank service. The E-Bank service calls the
-customer service while creating its sample accounts.
+### Services backend
 
-From the repository root, run the following in separate terminals:
+Lancer chaque commande dans un terminal distinct, depuis la racine du dépôt. Démarrer Eureka avant les services qui s'y enregistrent :
 
 ```bash
 cd discovery-service
@@ -82,51 +89,76 @@ cd gateway-service
 ./mvnw spring-boot:run
 ```
 
-On Windows, replace `./mvnw` with `mvnw.cmd` in each command. The gateway is
-optional when calling the customer and account services directly.
+```bash
+cd ebank-bot
+./mvnw spring-boot:run
+```
 
-| Service | Default URL |
-| --- | --- |
-| Customer service | `http://localhost:8056` |
-| E-Bank service | `http://localhost:8057` |
-| Discovery (Eureka) | `http://localhost:8761` |
-| Gateway | `http://localhost:9999` |
+Sous Windows, remplacer `./mvnw` par `.\mvnw.cmd`.
 
-The customer and E-Bank services currently disable Spring Cloud Config and
-use in-memory H2 databases. A separate config server or database is not
-required for this local setup.
-
-## API endpoints
-
-### Customers
-
-Base URL: `http://localhost:8056`
-
-| Method | Path | Description |
+| Service | URL locale | Démarrage |
 | --- | --- | --- |
-| `GET` | `/customers` | List customers |
-| `GET` | `/customers/{id}` | Get a customer by ID |
-| `POST` | `/customers` | Create a customer |
+| Eureka | `http://localhost:8761` | Requis pour les services utilisant la découverte |
+| Service clients | `http://localhost:8056` | Après Eureka |
+| Service comptes | `http://localhost:8057` | Après Eureka et le service clients |
+| Gateway | `http://localhost:9999` | Après Eureka |
+| Chatbot | `http://localhost:8058` | Requiert les clés de configuration ci-dessous |
 
-Example request:
+Les services clients et comptes désactivent Spring Cloud Config et utilisent H2 en mémoire. Aucun serveur de configuration ou serveur de base de données externe n'est nécessaire pour ce démarrage. Au lancement, le service clients crée trois clients de démonstration ; le service comptes crée ensuite quatre comptes pour chacun des clients d'identifiants 1 à 3. Les types et soldes de ces comptes sont générés au démarrage. Ces données en mémoire ne sont pas persistées et sont recréées à chaque redémarrage.
+
+### Chatbot et variables de configuration
+
+Le service `ebank-bot` nécessite les propriétés suivantes, configurées via l'environnement ou la configuration Spring :
+
+- `GEMINI_API_KEY` : clé d'accès Google Gemini.
+- `DISCORD-TOKEN` : jeton du bot Discord.
+- `TELEGRAM-TOKEN` : jeton du bot Telegram.
+
+Ne pas placer de véritables clés ou jetons dans le dépôt. Le chatbot se connecte aux serveurs MCP des services clients (`http://localhost:8056/mcp`) et comptes (`http://localhost:8057/mcp`). L'agent conserve le contexte des conversations selon un identifiant de conversation ; les bots utilisent respectivement l'identifiant du chat Telegram et celui du canal Discord.
+
+### Frontend Angular
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Ouvrir `http://localhost:4200`. La route Angular `/accounts` affiche la liste des comptes et demande les données à `http://localhost:9999/EBANK-SERVICE/accounts`.
+
+**À noter :** le fichier de configuration du gateway ne définit actuellement aucune route active : les exemples de routes sont commentés. Le routage nécessaire au frontend doit donc être configuré dans `gateway-service` avant que la page puisse récupérer les comptes via cette URL.
+
+## API REST
+
+### Clients
+
+Base URL : `http://localhost:8056`
+
+| Méthode | Chemin | Description |
+| --- | --- | --- |
+| `GET` | `/customers` | Retourne la liste des clients. |
+| `GET` | `/customers/{id}` | Retourne un client par son identifiant. |
+| `POST` | `/customers` | Crée un client à partir de son nom et de son adresse e-mail. |
+
+Exemple :
 
 ```bash
 curl -X POST http://localhost:8056/customers \
   -H "Content-Type: application/json" \
-  -d '{"name":"Aymen riani","email":"aymenriani001@gmail.com"}'
+  -d '{"name":"Samir Benali","email":"samir@example.com"}'
 ```
 
-### Bank accounts
+### Comptes bancaires
 
-Base URL: `http://localhost:8057`
+Base URL : `http://localhost:8057`
 
-| Method | Path | Description |
+| Méthode | Chemin | Description |
 | --- | --- | --- |
-| `GET` | `/accounts` | List bank accounts |
-| `GET` | `/accounts/{id}` | Get an account by ID, including its customer details |
-| `POST` | `/accounts` | Create an account for an existing customer |
+| `GET` | `/accounts` | Retourne la liste des comptes. |
+| `GET` | `/accounts/{id}` | Retourne un compte par son identifiant, avec les données du client associées. |
+| `POST` | `/accounts` | Crée un compte pour un client existant. |
 
-Example request:
+Exemple :
 
 ```bash
 curl -X POST http://localhost:8057/accounts \
@@ -134,28 +166,45 @@ curl -X POST http://localhost:8057/accounts \
   -d '{"customerId":1,"balance":1500.00,"accType":"CURRENT_ACCOUNT"}'
 ```
 
-The E-Bank service generates an account ID and creation time. Its startup
-sample data also creates accounts for customer IDs 1 through 3.
+L'identifiant du compte et sa date de création sont générés par le service. La création vérifie le client via `customer-service`. Si cet appel échoue, le circuit breaker peut fournir un client de secours ; la création ne constitue donc pas une preuve que le client existe réellement.
 
-## Build and test
+### Chat
 
-Run the Maven wrapper from an individual service directory:
+Base URL : `http://localhost:8058`
+
+| Méthode | Chemin | Description |
+| --- | --- | --- |
+| `GET` | `/chat?query=...&conversationId=...` | Envoie une question à l'agent et retourne une réponse texte. `query` vaut `Bonjour` par défaut et `conversationId` vaut `user-1` par défaut. |
+
+L'agent est destiné aux questions sur les clients et les comptes à l'aide des outils MCP disponibles. Les bots Telegram et Discord relaient également les messages à cet agent ; le bot Telegram accepte aussi les photos accompagnées d'une légende ou d'une question.
+
+## Compilation et tests
+
+Depuis le répertoire du service concerné :
 
 ```bash
 ./mvnw clean verify
 ```
 
-On Windows, use `mvnw.cmd clean verify`. For example:
+Sous Windows :
 
 ```powershell
-cd ebank-service
 .\mvnw.cmd clean verify
 ```
 
-## Development status
+Pour le frontend :
 
-This project is a work in progress. The current APIs cover basic customer and
-account creation and retrieval; they do not yet implement a complete banking
-workflow such as deposits, withdrawals, or transfers. The application also
-currently uses in-memory data, and authentication and authorization are not
-implemented.
+```bash
+cd frontend
+npm run build
+npm test
+```
+
+## Limites actuelles
+
+- Les données des services clients et comptes sont conservées en mémoire seulement.
+- La passerelle n'a pas encore de définition de routes active ; configurez-la avant de l'utiliser comme point d'entrée API ou avec le frontend.
+- Le frontend présente actuellement une page de consultation des comptes ; il ne propose pas encore de parcours complet de gestion bancaire.
+- Les API n'implémentent pas encore les opérations de dépôt, retrait ou virement.
+- L'authentification et l'autorisation ne sont pas implémentées.
+- Le circuit breaker du service comptes utilise un objet client de secours en cas d'échec du service clients.
