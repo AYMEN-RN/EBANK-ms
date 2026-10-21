@@ -2,7 +2,7 @@
 
 Projet de banque électronique construit autour de services Spring Boot indépendants. Il regroupe la gestion des clients et des comptes, la découverte des services, une passerelle API, un chatbot connecté aux données bancaires et une interface web Angular.
 
-> Le projet est en cours de développement. Ce README décrit les fonctionnalités et la configuration présentes dans le dépôt ; certaines intégrations, notamment le routage de la passerelle, restent à finaliser.
+> Le projet est en cours de développement. Ce README décrit les fonctionnalités et la configuration présentes dans le dépôt ; certaines intégrations restent à finaliser.
 
 ## Fonctionnalités
 
